@@ -1,9 +1,0 @@
-.grid2 {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.map-body > * {
-    margin-bottom: 15px;
-}

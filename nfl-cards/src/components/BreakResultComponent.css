@@ -1,5 +1,8 @@
-.flex {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+.break {
+    padding-bottom: 5px;
+    padding-left: 5px;
+    padding-right: 5px;
+    border-bottom: black 1px solid;
+    border-left: black 1px solid;
+    border-right: black 1px solid;
 }

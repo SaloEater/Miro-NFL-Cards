@@ -1,0 +1,22 @@
+.my-flex {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.my-flex-wrap {
+    flex-wrap: wrap;
+}
+
+.my-button {
+
+}
+
+.my-button-selected {
+    color: white;
+    background-color: black;
+}
+
+.map-body > * {
+    margin-bottom: 5px;
+}

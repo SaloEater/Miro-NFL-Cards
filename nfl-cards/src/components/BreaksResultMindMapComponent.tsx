@@ -1,7 +1,9 @@
-import {MindmapNode, StickyNote, Text} from "@mirohq/websdk-types";
+import {StickyNote, Text} from "@mirohq/websdk-types";
 import * as React from "react";
-import {useState} from "react";
-import "./BreakResultMindMapComponent.css"
+import {useEffect, useState} from "react";
+import "./common.css"
+import {Round, RoundBreaks} from "../entities";
+import BreakResultComponent from "./BreakResultComponent";
 
 class ResultPosition {
     public x: number
@@ -15,61 +17,33 @@ class ResultPosition {
             this.isSet = true
         }
     }
-
 }
 
 export default function BreaksResultMindMapComponent() {
-    const [nextTeamIndex, setNextTeamIndex] = useState(0)
-    const [users, setUsers] = useState<{map: Map<string, number[]>}>({map: new Map<string, number[]>()})
+    const [round, _setRound] = useState(new Round())
+    const [roundBreaks, _setRoundBreaks] = useState(new RoundBreaks())
     const [resultPosition, setResultPosition] = useState(new ResultPosition(0, 0))
     const [log, _setLog] = useState<string[]>([])
-    console.log(log)
+    const [nextTeamIndex, setNextTeamIndex] = useState(0)
+// @ts-ignore
 
-    //@ts-ignore
+    useEffect(() => {
+        addLog(`Selected ${roundBreaks.selectedRoundIndex}`)
+    }, []);
+
+    function setRound(newRound: Round) {
+        _setRound(newRound)
+    }
+
+
     function addLog(value: string) {
         _setLog((currentLog) => [...currentLog, value]);
     }
 
-    function addLogArray(values: string[]) {
-        _setLog((currentLog) => [...currentLog, ...values]);
-    }
-
-    function resetBreakResult() {
+    function resetRound() {
         _setLog([])
-        setNextTeamIndex(0)
-        setUsers({map: new Map<string, number[]>()})
-        //setResultPosition(new ResultPosition(0, 0))
-    }
-
-    function addToTeamIndex(value: number) {
-        setNextTeamIndex(nextTeamIndex + value)
-    }
-
-    function forceUpdateUsers() {
-        setUsers(prevUsers => ({map: new Map(prevUsers.map)}));
-    }
-
-    function addUsers() {
-        let localIndex = 0
-        let localLog: string[] = []
-        miro.board.getSelection().then(sel => {
-            let uniqueUsers = 0
-            sel.map((e) => {
-                const user = (new DOMParser().parseFromString((e as Text).content, "text/html")) .body.textContent || ""
-                if (!users.map.has(user)) {
-                    users.map.set(user, [])
-                    uniqueUsers++
-                }
-                let teams = users.map.get(user) as number[]
-                teams.push(nextTeamIndex + localIndex)
-                users.map.set(user, teams)
-                localIndex++
-            })
-            addLogArray([`Added ${sel.length} entries. Found ${uniqueUsers} unique users`])
-            forceUpdateUsers()
-            addToTeamIndex(localIndex)
-            addLogArray(localLog)
-        })
+        setResultPosition(new ResultPosition(0, 0))
+        resetRoundBreaks()
     }
 
     const teamIndexes = [
@@ -114,37 +88,54 @@ export default function BreaksResultMindMapComponent() {
     async function buildResult() {
         const position = new ResultPosition(resultPosition.x, resultPosition.y)
         let relativeY = position.y
-        let teamGapX = 10
+        let gapX = 10
         let teamGapY = 30
         let userHeight = 64
         let teamHeight = 25
         let gapY = 40
-        Array.from(users.map.entries()).forEach((userData) => {
-            let user = userData[0]
-            let teams = userData[1]
-            let teamsHeight = teams.length * teamHeight + (teams.length - 1) * teamGapY
-            let userY = userHeight / 2 + teamsHeight / 2
+        Array.from(round.getUsers()).forEach((user) => {
+            let allTeamsAmount = user.getTeamsAmount()
+            addLog(`User ${user.username} has ${allTeamsAmount} teams`)
+            let allTeamsHeight = allTeamsAmount * teamHeight + (allTeamsAmount - 1) * teamGapY
+            let userY = userHeight / 2 + allTeamsHeight / 2
             miro.board.experimental.createMindmapNode({
                 nodeView: {
-                    content: user,
+                    content: `${user.username} (${allTeamsAmount})`,
                 },
                 x: position.x,
                 y: relativeY + userY
             }).then((userRoot) => {
-                getTeamNames(teams).forEach((team, j) => {
+                Array.from(user.breaks.values()).forEach((breakData) => {
+                    let teamsAmount = breakData.teamIndexes.length
+                    let teamsHeight = teamsAmount * teamHeight + (teamsAmount -1) * teamGapY
+                    let teamIndexes = breakData.teamIndexes
+                    let breakRootX = position.x + gapX
+                    let breakRootY = relativeY + teamsHeight / 2;
                     miro.board.experimental.createMindmapNode({
                         nodeView: {
-                            content: team,
+                            content: `${breakData.name} (${teamsAmount})`,
                         },
-                        x: position.x + teamGapX,
-                        y: relativeY + (j > 0 ? j - 1 : 0) * teamGapY + j * teamHeight
-                    }).then((child) => {
-                        console.log(child.nodeView.content, child.height)
-                        userRoot.add(child)
+                        x: breakRootX,
+                        y: breakRootY
+                    }).then((breakRoot) => {
+                        userRoot.add(breakRoot)
+                        getTeamNames(teamIndexes).forEach((team, j) => {
+                            let teamX = breakRootX + gapX;
+                            let teamY = relativeY + (j > 0 ? j - 1 : 0) * teamGapY + j * teamHeight;
+                            miro.board.experimental.createMindmapNode({
+                                nodeView: {
+                                    content: team,
+                                },
+                                x: teamX,
+                                y: teamY
+                            }).then((child) => {
+                                breakRoot.add(child)
+                            })
+                        })
                     })
                 })
             })
-            relativeY += teamsHeight + gapY
+            relativeY += allTeamsHeight + gapY
         })
     }
 
@@ -152,7 +143,7 @@ export default function BreaksResultMindMapComponent() {
         miro.board.getSelection().then(sel => {
             sel.map((e) => {
                 const note = e as StickyNote
-                setResultPosition(new ResultPosition(note.x, note.y))
+                setResultPosition(new ResultPosition(note.x + 125, note.y + 50))
             })
         })
     }
@@ -165,18 +156,57 @@ export default function BreaksResultMindMapComponent() {
         })
     }
 
+    function selectBreak(index: number) {
+        _setRoundBreaks((oldBreaks) => new RoundBreaks([...oldBreaks.breaks], index))
+        setNextTeamIndex(0)
+    }
+
+    function addEmptyRoundBreak() {
+        _setRoundBreaks((oldBreaks) => new RoundBreaks([...oldBreaks.breaks, "Unnamed"], oldBreaks.selectedRoundIndex))
+    }
+
+    function setCurrentRoundBreakName(name: string) {
+        _setRoundBreaks((oldBreaks) => {
+            let newBreaks = new RoundBreaks([...oldBreaks.breaks], oldBreaks.selectedRoundIndex)
+            newBreaks.setCurrentRoundBreakName(name)
+            return newBreaks
+        })
+    }
+
+    function resetRoundBreaks() {
+        _setRoundBreaks(new RoundBreaks())
+
+    }
+
     return <div className="map-body">
-        <button className="button button-primary" type="button"
-            onClick={resetBreakResult}
-        >Reset</button>
-        <div className="grid2">
-            <div>{users.map.size}</div>
-            <button className="button button-primary" type="button" onClick={addUsers}>Add user(s)</button>
+        <div className="my-flex my-flex-wrap">
+            {
+                roundBreaks.breaks.map((roundBreak, index) => {
+                    return <button className={index === roundBreaks.selectedRoundIndex ? "my-button my-button-selected" : ""} onClick={() => selectBreak(index)}>
+                        {roundBreak}
+                    </button>
+                })
+            }
+            <button onClick={addEmptyRoundBreak}>+</button>
         </div>
+        {
+            roundBreaks.selectedRoundIndex !== null && <BreakResultComponent
+                setCurrentRoundBreakName={setCurrentRoundBreakName}
+                breakName={roundBreaks.getCurrentBreakName()}
+                addLog={addLog}
+                round={round}
+                setRound={setRound}
+                nextTeamIndex={nextTeamIndex}
+                setNextTeamIndex={setNextTeamIndex}
+            />
+        }
+        <button className="button button-primary" type="button"
+            onClick={resetRound}
+        >Reset round</button>
         <button className="button button-primary" type="button" onClick={buildResult}>Build result</button>
-        <div className="grid2">
-            <div>{resultPosition.isSet ? "Is set" : "Not set"}</div>
-            <button className="button button-primary" type="button" onClick={setResultPositionFromSelection}>Set</button>
+        <div className="my-flex">
+            <button className="button button-primary" type="button" onClick={setResultPositionFromSelection}>Set position</button>
+            <div>{resultPosition.isSet ? "Is set" : ""}</div>
         </div>
         <button className="button button-primary" type="button" onClick={logStats}>Stats</button>
         <div>

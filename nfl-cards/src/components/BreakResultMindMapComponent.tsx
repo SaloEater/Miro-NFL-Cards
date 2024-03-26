@@ -1,7 +1,7 @@
-import {MindmapNode, StickyNote, Text} from "@mirohq/websdk-types";
+import {StickyNote, Text} from "@mirohq/websdk-types";
 import * as React from "react";
 import {useState} from "react";
-import "./BreakResultMindMapComponent.css"
+import "./common.css"
 
 class ResultPosition {
     public x: number
@@ -169,21 +169,9 @@ export default function BreakResultMindMapComponent() {
         <button className="button button-primary" type="button"
             onClick={resetBreakResult}
         >Reset</button>
-        <div className="grid2">
+        <div className="my-flex">
             <div>{users.map.size}</div>
             <button className="button button-primary" type="button" onClick={addUsers}>Add user(s)</button>
-        </div>
-        <button className="button button-primary" type="button" onClick={buildResult}>Build result</button>
-        <div className="grid2">
-            <div>{resultPosition.isSet ? "Is set" : "Not set"}</div>
-            <button className="button button-primary" type="button" onClick={setResultPositionFromSelection}>Set</button>
-        </div>
-        <button className="button button-primary" type="button" onClick={logStats}>Stats</button>
-        <div>
-            <label>
-                Log:
-                <textarea readOnly={true} rows={10} cols={30} value={log.toReversed().join('\n')}/>
-            </label>
         </div>
     </div>
 }
