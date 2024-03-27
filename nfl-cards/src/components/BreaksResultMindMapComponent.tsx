@@ -25,11 +25,6 @@ export default function BreaksResultMindMapComponent() {
     const [resultPosition, setResultPosition] = useState(new ResultPosition(0, 0))
     const [log, _setLog] = useState<string[]>([])
     const [nextTeamIndex, setNextTeamIndex] = useState(0)
-// @ts-ignore
-
-    useEffect(() => {
-        addLog(`Selected ${roundBreaks.selectedRoundIndex}`)
-    }, []);
 
     function setRound(newRound: Round) {
         _setRound(newRound)
@@ -143,7 +138,7 @@ export default function BreaksResultMindMapComponent() {
         miro.board.getSelection().then(sel => {
             sel.map((e) => {
                 const note = e as StickyNote
-                setResultPosition(new ResultPosition(note.x + 125, note.y + 50))
+                setResultPosition(new ResultPosition(note.x , note.y + note.height / 1.5))
             })
         })
     }
@@ -152,7 +147,7 @@ export default function BreaksResultMindMapComponent() {
         miro.board.getSelection().then(sel => {
             console.log(sel)
             let item = (sel[0] as Text)
-            addLog(`height: ${item.height}`)
+            addLog(`${item.id}`)
         })
     }
 
@@ -177,6 +172,23 @@ export default function BreaksResultMindMapComponent() {
         _setRoundBreaks(new RoundBreaks())
 
     }
+
+    function setLastNickname() {
+        miro.board.experimental.getSelection().then(async (sel) => {
+            if (sel.length > 0) {
+                (sel[0] as Text).content = (document.getElementById('last_username') as HTMLInputElement).value
+                sel[0].sync()
+            }
+        })
+    }
+
+    setTimeout(async () => {
+        let element = document.getElementById('last_username')
+        if (element) {
+            let lastUsername = (await miro.board.getById("3458764583798228123")) as Text
+            (element as HTMLInputElement).value = lastUsername.content
+        }
+    }, 1000)
 
     return <div className="map-body">
         <div className="my-flex my-flex-wrap">
@@ -214,6 +226,11 @@ export default function BreaksResultMindMapComponent() {
                 Log:
                 <textarea readOnly={true} rows={10} cols={30} value={log.toReversed().join('\n')}/>
             </label>
+        </div>
+        <div>
+            <label htmlFor="last_username">Last nickname:</label>
+            <input type="text" id="last_username"></input>
+            <button onClick={setLastNickname}>Copy</button>
         </div>
     </div>
 }

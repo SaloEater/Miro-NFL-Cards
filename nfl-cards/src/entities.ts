@@ -58,7 +58,7 @@ export class User {
     }
 
     clearBreak(breakName: string) {
-        (this.breaks.get(breakName)as Break).clear()
+        return (this.breaks.get(breakName)as Break).clear()
     }
 
     getTeamsAmount() {
@@ -80,7 +80,9 @@ export class Break {
     }
 
     clear() {
+        let oldAmount = this.teamIndexes.length
         this.teamIndexes = []
+        return oldAmount
     }
 }
 
