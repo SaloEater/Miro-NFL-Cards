@@ -21,3 +21,7 @@
 .map-body > * {
     margin-bottom: 5px;
 }
+
+.my-short-input {
+    width: 30px;
+}

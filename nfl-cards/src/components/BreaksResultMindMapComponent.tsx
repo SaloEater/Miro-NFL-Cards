@@ -1,8 +1,8 @@
 import {StickyNote, Text} from "@mirohq/websdk-types";
 import * as React from "react";
-import {useEffect, useState} from "react";
+import {ChangeEvent, useEffect, useState} from "react";
 import "./common.css"
-import {Round, RoundBreaks} from "../entities";
+import {Break, Mutex, Round, RoundBreaks, User} from "../entities";
 import BreakResultComponent from "./BreakResultComponent";
 
 class ResultPosition {
@@ -19,12 +19,15 @@ class ResultPosition {
     }
 }
 
+const shoppingCartMutex = new Mutex();
+
 export default function BreaksResultMindMapComponent() {
     const [round, _setRound] = useState(new Round())
     const [roundBreaks, _setRoundBreaks] = useState(new RoundBreaks())
-    const [resultPosition, setResultPosition] = useState(new ResultPosition(0, 0))
     const [log, _setLog] = useState<string[]>([])
     const [nextTeamIndex, setNextTeamIndex] = useState(0)
+    const [counter, setCounter] = useState(1)
+    const [buyersQueue, setBuyersQueue] = useState<string[]>([])
 
     function setRound(newRound: Round) {
         _setRound(newRound)
@@ -37,8 +40,8 @@ export default function BreaksResultMindMapComponent() {
 
     function resetRound() {
         _setLog([])
-        setResultPosition(new ResultPosition(0, 0))
         resetRoundBreaks()
+        setRound(new Round())
     }
 
     const teamIndexes = [
@@ -80,16 +83,43 @@ export default function BreaksResultMindMapComponent() {
         return teamIndexes.filter((_, j) => teams.indexOf(j) !== -1)
     }
 
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
     async function buildResult() {
-        const position = new ResultPosition(resultPosition.x, resultPosition.y)
+        let sel = await miro.board.getSelection()
+        if (sel.length <= 0) {
+            addLog('Select sticky note to build a result')
+            return
+        }
+        const note = sel[0] as StickyNote
+        const position = new ResultPosition(note.x , note.y + note.height / 1.5)
         let relativeY = position.y
         let gapX = 10
         let teamGapY = 30
         let userHeight = 64
         let teamHeight = 25
         let gapY = 40
-        Array.from(round.getUsers()).forEach((user) => {
+        let sorted = Array.from(round.getUsers()).sort((a, b) => {
+            let aUsername = a.username.trim()
+            let bUsername = b.username.trim()
+
+            if(aUsername < bUsername) {
+                return -1; // return -1 if a should come before b
+            }
+            if(aUsername > bUsername) {
+                return 1; // return 1 if a should come after b
+            }
+            return 0; // return 0 if a and b are equal
+        })
+
+        let teamsLeft = Array.from(sorted.values()).reduce((acc, user) => acc + user.getTeamsAmount(), 0)
+        for (let [userIndex, user] of sorted.entries()) {
             let allTeamsAmount = user.getTeamsAmount()
+            if (userIndex > 0) {
+                await sleep(1000 * allTeamsAmount);
+            }
             addLog(`User ${user.username} has ${allTeamsAmount} teams`)
             let allTeamsHeight = allTeamsAmount * teamHeight + (allTeamsAmount - 1) * teamGapY
             let userY = userHeight / 2 + allTeamsHeight / 2
@@ -99,8 +129,12 @@ export default function BreaksResultMindMapComponent() {
                 },
                 x: position.x,
                 y: relativeY + userY
-            }).then((userRoot) => {
-                Array.from(user.breaks.values()).forEach((breakData) => {
+            }).then(async (userRoot) => {
+                if (userIndex == 0) {
+                    miro.board.viewport.zoomTo(userRoot)
+                }
+                Array.from(user.breaks.values()).forEach(async (breakData, breakIndex) => {
+                    await sleep(400 * breakIndex)
                     let teamsAmount = breakData.teamIndexes.length
                     let teamsHeight = teamsAmount * teamHeight + (teamsAmount -1) * teamGapY
                     let teamIndexes = breakData.teamIndexes
@@ -114,41 +148,50 @@ export default function BreaksResultMindMapComponent() {
                         y: breakRootY
                     }).then((breakRoot) => {
                         userRoot.add(breakRoot)
-                        getTeamNames(teamIndexes).forEach((team, j) => {
+                        getTeamNames(teamIndexes).forEach(async (team, j) => {
+                            await sleep(50 * breakIndex)
                             let teamX = breakRootX + gapX;
                             let teamY = relativeY + (j > 0 ? j - 1 : 0) * teamGapY + j * teamHeight;
                             miro.board.experimental.createMindmapNode({
                                 nodeView: {
-                                    content: team,
+                                    content: `${team}[${teamIndexes[j]}]`,
                                 },
                                 x: teamX,
                                 y: teamY
                             }).then((child) => {
                                 breakRoot.add(child)
+                                teamsLeft--
+                                addLog(`${teamsLeft} teams left to add`)
                             })
                         })
                     })
                 })
             })
             relativeY += allTeamsHeight + gapY
-        })
-    }
-
-    function setResultPositionFromSelection() {
-        miro.board.getSelection().then(sel => {
-            sel.map((e) => {
-                const note = e as StickyNote
-                setResultPosition(new ResultPosition(note.x , note.y + note.height / 1.5))
-            })
-        })
+        }
     }
 
     function logStats() {
-        miro.board.getSelection().then(sel => {
-            console.log(sel)
-            let item = (sel[0] as Text)
-            addLog(`${item.id}`)
+        // miro.board.getSelection().then(sel => {
+        //     console.log(sel)
+        //     let item = (sel[0] as Text)
+        //     addLog(`id: ${item.id}, x: ${item.x}, y: ${item.y}, w: ${item.width}, h: ${item.height}`)
+        // })
+
+        let sorted = Array.from(round.getUsers()).sort((a, b) => {
+            let aUsername = a.username.trim()
+            let bUsername = b.username.trim()
+
+            if(aUsername < bUsername) {
+                return -1; // return -1 if a should come before b
+            }
+            if(aUsername > bUsername) {
+                return 1; // return 1 if a should come after b
+            }
+            return 0; // return 0 if a and b are equal
         })
+        let teamsLeft = Array.from(sorted.values()).reduce((acc, user) => acc + user.getTeamsAmount(), 0)
+        addLog(`${teamsLeft} teams`)
     }
 
     function selectBreak(index: number) {
@@ -170,7 +213,6 @@ export default function BreaksResultMindMapComponent() {
 
     function resetRoundBreaks() {
         _setRoundBreaks(new RoundBreaks())
-
     }
 
     function setLastNickname() {
@@ -189,6 +231,79 @@ export default function BreaksResultMindMapComponent() {
             (element as HTMLInputElement).value = lastUsername.content
         }
     }, 1000)
+
+    function printCounter() {
+        miro.board.experimental.getSelection().then((sel) => {
+            if (counter < 0) {
+                addLog(`Specify counter to start`)
+                return
+            }
+            if (sel.length <= 0) {
+                addLog('You have to select text with username to put a counter next to it')
+                return
+            }
+            let currentUserText = (sel[0] as Text)
+            miro.board.createText({
+                content: `${counter})`,
+                x: currentUserText.x - currentUserText.width / 2,
+                y: currentUserText.y,
+                width: 20,
+                style: {
+                    fontSize: 40,
+                }
+            })
+            increaseCounter()
+        })
+    }
+
+    function decreaseCounter() {
+        setCounter((old) => old - 1)
+    }
+
+    function increaseCounter() {
+        setCounter((old) => old + 1)
+    }
+
+    function changeCounter(e: ChangeEvent) {
+        let newValue = e.currentTarget.value as string;
+        if (newValue == "") {
+            setCounter(-1)
+        } else {
+            let newInt = parseInt(newValue, 10)
+            setCounter(newInt)
+        }
+    }
+
+    function clearLog() {
+        _setLog([])
+    }
+
+    function addUsernamesToQueue(usernames: string[]) {
+        shoppingCartMutex.runExclusive(async () => {
+            let existingUsernames: string[] = JSON.parse(localStorage.getItem('usernames_queue') ?? "[]")
+            existingUsernames = existingUsernames.concat(usernames)
+            setBuyersQueue(() => existingUsernames)
+            localStorage.setItem('usernames_queue', JSON.stringify(existingUsernames))
+        });
+    }
+
+    function clearQueue() {
+        shoppingCartMutex.runExclusive(async () => {
+            localStorage.setItem('usernames_queue', JSON.stringify([]))
+            setBuyersQueue([])
+        });
+    }
+
+    useEffect(() => {
+        window.addEventListener('message', (event) => {
+            if (event.data.commandId == 'sdkv2-plugin-message') {
+                return
+            }
+            console.log('data is: ', event.data)
+            let usernames: string[] = event.data
+            addUsernamesToQueue(usernames)
+        });
+    }, []);
 
     return <div className="map-body">
         <div className="my-flex my-flex-wrap">
@@ -215,17 +330,25 @@ export default function BreaksResultMindMapComponent() {
         <button className="button button-primary" type="button"
             onClick={resetRound}
         >Reset round</button>
-        <button className="button button-primary" type="button" onClick={buildResult}>Build result</button>
-        <div className="my-flex">
-            <button className="button button-primary" type="button" onClick={setResultPositionFromSelection}>Set position</button>
-            <div>{resultPosition.isSet ? "Is set" : ""}</div>
-        </div>
+        <button className="button button-primary" type="button" onClick={buildResult}>Build</button>
         <button className="button button-primary" type="button" onClick={logStats}>Stats</button>
         <div>
-            <label>
-                Log:
-                <textarea readOnly={true} rows={10} cols={30} value={log.toReversed().join('\n')}/>
-            </label>
+            <button type="button" onClick={decreaseCounter}>-1</button>
+            <button type="button" onClick={increaseCounter}>+1</button>
+            <input className="my-short-input" type="text" value={counter < 0 ? "" : counter} onChange={changeCounter}></input>
+            <button className="button button-primary" type="button" onClick={printCounter}>Add counter</button>
+        </div>
+        <div>
+            <div className="my-flex">
+                <div>Log</div>
+                <button className="button button-primary" type="button" onClick={clearLog}>Clear</button>
+            </div>
+            <textarea readOnly={true} rows={10} cols={30} value={log.toReversed().join('\n')}/>
+        </div>
+        <div>
+            Buyers queue
+            <textarea id="buyers-queue" readOnly={true} rows={10} cols={30} value={buyersQueue.toReversed().join('\n')}/>
+            <button className="button button-primary" type="button" onClick={clearQueue}>Clear</button>
         </div>
         <div>
             <label htmlFor="last_username">Last nickname:</label>
