@@ -315,12 +315,12 @@ export default function BreaksResultMindMapComponent() {
     }, []);
 
     useEffect(() => {
-        setCounter(parseInt(localStorage.getItem(KeyCounter) ?? "0"))
+        setCounter(parseInt(localStorage.getItem(KeyCounter) ?? "1"))
     }, []);
 
     function resetCounter() {
-        localStorage.setItem(KeyCounter, "0")
-        setCounter(0)
+        localStorage.setItem(KeyCounter, "1")
+        setCounter(1)
     }
 
     return <div className="map-body">
