@@ -324,32 +324,6 @@ export default function BreaksResultMindMapComponent() {
     }
 
     return <div className="map-body">
-        <div className="my-flex my-flex-wrap">
-            {
-                roundBreaks.breaks.map((roundBreak, index) => {
-                    return <button className={index === roundBreaks.selectedRoundIndex ? "my-button my-button-selected" : ""} onClick={() => selectBreak(index)}>
-                        {roundBreak}
-                    </button>
-                })
-            }
-            <button onClick={addEmptyRoundBreak}>+</button>
-        </div>
-        {
-            roundBreaks.selectedRoundIndex !== null && <BreakResultComponent
-                setCurrentRoundBreakName={setCurrentRoundBreakName}
-                breakName={roundBreaks.getCurrentBreakName()}
-                addLog={addLog}
-                round={round}
-                setRound={setRound}
-                nextTeamIndex={nextTeamIndex}
-                setNextTeamIndex={setNextTeamIndex}
-            />
-        }
-        <button className="button button-primary" type="button"
-            onClick={resetRound}
-        >Reset round</button>
-        <button className="button button-primary" type="button" onClick={buildResult}>Build</button>
-        <button className="button button-primary" type="button" onClick={logStats}>Stats</button>
         <div className="my-flex">
             <div>
                 <div><button type="button" onClick={increaseCounter}>+1</button></div>
@@ -361,22 +335,5 @@ export default function BreaksResultMindMapComponent() {
             </div>
             <button className="button button-primary" type="button" onClick={printCounter}>Add counter</button>
         </div>
-        {/*<div>*/}
-        {/*    <div className="my-flex">*/}
-        {/*        <div>Log</div>*/}
-        {/*        <button className="button button-primary" type="button" onClick={clearLog}>Clear</button>*/}
-        {/*    </div>*/}
-        {/*    <textarea readOnly={true} rows={10} cols={30} value={log.toReversed().join('\n')}/>*/}
-        {/*</div>*/}
-        {/*<div>*/}
-        {/*    Buyers queue*/}
-        {/*    <textarea id="buyers-queue" readOnly={true} rows={10} cols={30} value={buyersQueue.toReversed().join('\n')}/>*/}
-        {/*    <button className="button button-primary" type="button" onClick={clearQueue}>Clear</button>*/}
-        {/*</div>*/}
-        {/*<div>*/}
-        {/*    <label htmlFor="last_username">Last nickname:</label>*/}
-        {/*    <input type="text" id="last_username"></input>*/}
-        {/*    <button onClick={setLastNickname}>Copy</button>*/}
-        {/*</div>*/}
     </div>
 }
