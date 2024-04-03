@@ -20,6 +20,7 @@ class ResultPosition {
 }
 
 const KeyCounter = 'counter'
+const KeyAuto = "auto"
 const shoppingCartMutex = new Mutex();
 
 export default function BreaksResultMindMapComponent() {
@@ -309,6 +310,7 @@ export default function BreaksResultMindMapComponent() {
 
     useEffect(() => {
         setCounter(parseInt(localStorage.getItem(KeyCounter) ?? "1"))
+        setIsAuto(!!(localStorage.getItem(KeyAuto) ?? ""))
         miro.board.ui.on('selection:update', async (event) => {
             console.log(event)
             if (isAuto) {
@@ -345,7 +347,11 @@ export default function BreaksResultMindMapComponent() {
     }
 
     function switchAuto() {
-        setIsAuto((old) => !old)
+        setIsAuto((old) => {
+            let newV = !old
+            localStorage.setItem(KeyAuto, newV ? "1" : "")
+            return newV
+        })
     }
 
     return <div className="map-body">
