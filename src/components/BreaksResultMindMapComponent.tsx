@@ -29,6 +29,7 @@ export default function BreaksResultMindMapComponent() {
     const [nextTeamIndex, setNextTeamIndex] = useState(0)
     const [counter, setCounter] = useState(1)
     const [buyersQueue, setBuyersQueue] = useState<string[]>([])
+    const [isAuto, setIsAuto] = useState(false)
 
     function setRound(newRound: Round) {
         _setRound(newRound)
@@ -225,14 +226,6 @@ export default function BreaksResultMindMapComponent() {
         })
     }
 
-    setTimeout(async () => {
-        let element = document.getElementById('last_username')
-        if (element) {
-            let lastUsername = (await miro.board.getById("3458764583798228123")) as Text
-            (element as HTMLInputElement).value = lastUsername.content
-        }
-    }, 1000)
-
     function printCounter() {
         miro.board.experimental.getSelection().then((sel) => {
             if (counter < 0) {
@@ -316,11 +309,43 @@ export default function BreaksResultMindMapComponent() {
 
     useEffect(() => {
         setCounter(parseInt(localStorage.getItem(KeyCounter) ?? "1"))
+        miro.board.ui.on('selection:update', async (event) => {
+            console.log(event)
+            if (isAuto) {
+                if (counter < 0) {
+                    addLog(`Specify counter to start`)
+                    return
+                }
+                if (event.items.length <= 0) {
+                    addLog('You have to select text with username to put a counter next to it')
+                    return
+                }
+                if (!("width" in event.items[0])) {
+                    addLog('You have to select text element with username to put a counter next to it')
+                    return
+                }
+                let currentUserText = (event.items[0] as Text)
+                miro.board.createText({
+                    content: `${counter})`,
+                    x: currentUserText.x - currentUserText.width / 2 - (counter > 9 ? 15 : 5),
+                    y: currentUserText.y,
+                    width: 20,
+                    style: {
+                        fontSize: 25,
+                    }
+                })
+                increaseCounter()
+            }
+        });
     }, []);
 
     function resetCounter() {
         localStorage.setItem(KeyCounter, "1")
         setCounter(1)
+    }
+
+    function switchAuto() {
+        setIsAuto((old) => !old)
     }
 
     return <div className="map-body">
@@ -360,6 +385,10 @@ export default function BreaksResultMindMapComponent() {
                 <button type="button" onClick={resetCounter}>1</button>
             </div>
             <button className="button button-primary" type="button" onClick={printCounter}>Add counter</button>
+            <label>
+                Auto
+                <input type="checkbox" checked={isAuto} onChange={switchAuto}/>
+            </label>
         </div>
         <div>
             <div className="my-flex">
@@ -372,11 +401,6 @@ export default function BreaksResultMindMapComponent() {
             Buyers queue
             <textarea id="buyers-queue" readOnly={true} rows={10} cols={30} value={buyersQueue.toReversed().join('\n')}/>
             <button className="button button-primary" type="button" onClick={clearQueue}>Clear</button>
-        </div>
-        <div>
-            <label htmlFor="last_username">Last nickname:</label>
-            <input type="text" id="last_username"></input>
-            <button onClick={setLastNickname}>Copy</button>
         </div>
     </div>
 }
