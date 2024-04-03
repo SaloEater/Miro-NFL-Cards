@@ -245,11 +245,11 @@ export default function BreaksResultMindMapComponent() {
             let currentUserText = (sel[0] as Text)
             miro.board.createText({
                 content: `${counter})`,
-                x: currentUserText.x - currentUserText.width / 2,
+                x: currentUserText.x - currentUserText.width / 2 - (counter > 9 ? 15 : 5),
                 y: currentUserText.y,
                 width: 20,
                 style: {
-                    fontSize: 40,
+                    fontSize: 25,
                 }
             })
             increaseCounter()
