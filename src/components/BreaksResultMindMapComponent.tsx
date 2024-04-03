@@ -19,6 +19,7 @@ class ResultPosition {
     }
 }
 
+const KeyCounter = 'counter'
 const shoppingCartMutex = new Mutex();
 
 export default function BreaksResultMindMapComponent() {
@@ -245,11 +246,11 @@ export default function BreaksResultMindMapComponent() {
             let currentUserText = (sel[0] as Text)
             miro.board.createText({
                 content: `${counter})`,
-                x: currentUserText.x - currentUserText.width / 2,
+                x: currentUserText.x - currentUserText.width / 2 - (counter > 9 ? 15 : 5),
                 y: currentUserText.y,
                 width: 20,
                 style: {
-                    fontSize: 40,
+                    fontSize: 25,
                 }
             })
             increaseCounter()
@@ -257,11 +258,19 @@ export default function BreaksResultMindMapComponent() {
     }
 
     function decreaseCounter() {
-        setCounter((old) => old - 1)
+        setCounter((old) => {
+            let newV = old - 1
+            localStorage.setItem(KeyCounter, newV.toString())
+            return newV
+        })
     }
 
     function increaseCounter() {
-        setCounter((old) => old + 1)
+        setCounter((old) => {
+            let newV = old + 1
+            localStorage.setItem(KeyCounter, newV.toString())
+            return newV
+        })
     }
 
     function changeCounter(e: ChangeEvent) {
@@ -305,37 +314,51 @@ export default function BreaksResultMindMapComponent() {
         });
     }, []);
 
+    useEffect(() => {
+        setCounter(parseInt(localStorage.getItem(KeyCounter) ?? "0"))
+    }, []);
+
+    function resetCounter() {
+        localStorage.setItem(KeyCounter, "0")
+        setCounter(0)
+    }
+
     return <div className="map-body">
-        {/*<div className="my-flex my-flex-wrap">*/}
-        {/*    {*/}
-        {/*        roundBreaks.breaks.map((roundBreak, index) => {*/}
-        {/*            return <button className={index === roundBreaks.selectedRoundIndex ? "my-button my-button-selected" : ""} onClick={() => selectBreak(index)}>*/}
-        {/*                {roundBreak}*/}
-        {/*            </button>*/}
-        {/*        })*/}
-        {/*    }*/}
-        {/*    <button onClick={addEmptyRoundBreak}>+</button>*/}
-        {/*</div>*/}
-        {/*{*/}
-        {/*    roundBreaks.selectedRoundIndex !== null && <BreakResultComponent*/}
-        {/*        setCurrentRoundBreakName={setCurrentRoundBreakName}*/}
-        {/*        breakName={roundBreaks.getCurrentBreakName()}*/}
-        {/*        addLog={addLog}*/}
-        {/*        round={round}*/}
-        {/*        setRound={setRound}*/}
-        {/*        nextTeamIndex={nextTeamIndex}*/}
-        {/*        setNextTeamIndex={setNextTeamIndex}*/}
-        {/*    />*/}
-        {/*}*/}
-        {/*<button className="button button-primary" type="button"*/}
-        {/*    onClick={resetRound}*/}
-        {/*>Reset round</button>*/}
-        {/*<button className="button button-primary" type="button" onClick={buildResult}>Build</button>*/}
-        {/*<button className="button button-primary" type="button" onClick={logStats}>Stats</button>*/}
-        <div>
-            <button type="button" onClick={decreaseCounter}>-1</button>
-            <button type="button" onClick={increaseCounter}>+1</button>
-            <input className="my-short-input" type="text" value={counter < 0 ? "" : counter} onChange={changeCounter}></input>
+        <div className="my-flex my-flex-wrap">
+            {
+                roundBreaks.breaks.map((roundBreak, index) => {
+                    return <button className={index === roundBreaks.selectedRoundIndex ? "my-button my-button-selected" : ""} onClick={() => selectBreak(index)}>
+                        {roundBreak}
+                    </button>
+                })
+            }
+            <button onClick={addEmptyRoundBreak}>+</button>
+        </div>
+        {
+            roundBreaks.selectedRoundIndex !== null && <BreakResultComponent
+                setCurrentRoundBreakName={setCurrentRoundBreakName}
+                breakName={roundBreaks.getCurrentBreakName()}
+                addLog={addLog}
+                round={round}
+                setRound={setRound}
+                nextTeamIndex={nextTeamIndex}
+                setNextTeamIndex={setNextTeamIndex}
+            />
+        }
+        <button className="button button-primary" type="button"
+            onClick={resetRound}
+        >Reset round</button>
+        <button className="button button-primary" type="button" onClick={buildResult}>Build</button>
+        <button className="button button-primary" type="button" onClick={logStats}>Stats</button>
+        <div className="my-flex">
+            <div>
+                <div><button type="button" onClick={increaseCounter}>+1</button></div>
+                <div><button type="button" onClick={decreaseCounter}>-1</button></div>
+            </div>
+            <div>
+                <div><input className="my-short-input" type="text" value={counter < 0 ? "" : counter} onChange={changeCounter}></input></div>
+                <button type="button" onClick={resetCounter}>0</button>
+            </div>
             <button className="button button-primary" type="button" onClick={printCounter}>Add counter</button>
         </div>
         {/*<div>*/}
