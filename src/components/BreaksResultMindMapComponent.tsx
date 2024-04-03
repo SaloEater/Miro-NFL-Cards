@@ -357,7 +357,7 @@ export default function BreaksResultMindMapComponent() {
             </div>
             <div>
                 <div><input className="my-short-input" type="text" value={counter < 0 ? "" : counter} onChange={changeCounter}></input></div>
-                <button type="button" onClick={resetCounter}>0</button>
+                <button type="button" onClick={resetCounter}>1</button>
             </div>
             <button className="button button-primary" type="button" onClick={printCounter}>Add counter</button>
         </div>
