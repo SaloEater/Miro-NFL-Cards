@@ -1,8 +1,8 @@
-import {StickyNote, Text} from "@mirohq/websdk-types";
+import {SelectionUpdateEvent, StickyNote, Text} from "@mirohq/websdk-types";
 import * as React from "react";
-import {ChangeEvent, useEffect, useState} from "react";
+import {ChangeEvent, useEffect, useRef, useState} from "react";
 import "./common.css"
-import {Break, Mutex, Round, RoundBreaks, User} from "../entities";
+import {Mutex, Round, RoundBreaks} from "../entities";
 import BreakResultComponent from "./BreakResultComponent";
 
 class ResultPosition {
@@ -30,12 +30,13 @@ export default function BreaksResultMindMapComponent() {
     const [nextTeamIndex, setNextTeamIndex] = useState(0)
     const [counter, setCounter] = useState(1)
     const [buyersQueue, setBuyersQueue] = useState<string[]>([])
-    const [isAuto, setIsAuto] = useState(false)
+    const [isAuto, _setIsAuto] = useState(false)
+    const isAutoRef = useRef(isAuto);
+    const counterRef = useRef(counter);
 
     function setRound(newRound: Round) {
         _setRound(newRound)
     }
-
 
     function addLog(value: string) {
         _setLog((currentLog) => [...currentLog, value]);
@@ -180,6 +181,7 @@ export default function BreaksResultMindMapComponent() {
         //     let item = (sel[0] as Text)
         //     addLog(`id: ${item.id}, x: ${item.x}, y: ${item.y}, w: ${item.width}, h: ${item.height}`)
         // })
+        addLog('is auto is ' + (isAuto ? 'true' : 'false') )
 
         let sorted = Array.from(round.getUsers()).sort((a, b) => {
             let aUsername = a.username.trim()
@@ -298,61 +300,68 @@ export default function BreaksResultMindMapComponent() {
     }
 
     useEffect(() => {
-        window.addEventListener('message', (event) => {
-            if (event.data.commandId == 'sdkv2-plugin-message') {
-                return
-            }
-            console.log('data is: ', event.data)
-            let usernames: string[] = event.data
-            addUsernamesToQueue(usernames)
-        });
-    }, []);
+        isAutoRef.current = isAuto; // Keep the ref current value in sync with isAuto
+    }, [isAuto]); // Update the ref value whenever isAuto changes
+
+    useEffect(() => {
+        counterRef.current = counter; // Keep the ref current value in sync with isAuto
+    }, [counter]); // Update the ref value whenever isAuto changes
 
     useEffect(() => {
         setCounter(parseInt(localStorage.getItem(KeyCounter) ?? "1"))
-        setIsAuto(!!(localStorage.getItem(KeyAuto) ?? ""))
-        miro.board.ui.on('selection:update', async (event) => {
-            console.log(event)
-            if (isAuto) {
-                if (counter < 0) {
-                    addLog(`Specify counter to start`)
-                    return
-                }
-                if (event.items.length <= 0) {
-                    addLog('You have to select text with username to put a counter next to it')
-                    return
-                }
-                if (!("width" in event.items[0])) {
-                    addLog('You have to select text element with username to put a counter next to it')
-                    return
-                }
-                let currentUserText = (event.items[0] as Text)
+        let localV = localStorage.getItem(KeyAuto)
+        let nextAuto = !!(localV ?? "")
+        setIsAuto(nextAuto)
 
-                if (currentUserText.content.indexOf('$') != -1 || currentUserText.content.indexOf('>') != -1) {
-                    return
-                }
-
-                miro.board.createText({
-                    content: `${counter})`,
-                    x: currentUserText.x - currentUserText.width / 2 - (counter > 9 ? 15 : 5),
-                    y: currentUserText.y,
-                    width: 20,
-                    style: {
-                        fontSize: 25,
-                    }
-                })
-                increaseCounter()
-            }
-        });
+        miro.board.ui.off('selection:update', selectionUpdate)
+        setTimeout(() => {miro.board.ui.on('selection:update', selectionUpdate);}, 200)
     }, []);
+
+    function selectionUpdate(event: SelectionUpdateEvent) {
+        let counterValue = counterRef.current
+        let isAutoValue = isAutoRef.current
+        if (isAutoValue) {
+            if (counterValue < 0) {
+                addLog(`Specify counter to start`)
+                return
+            }
+            if (event.items.length <= 0) {
+                addLog('You have to select text with username to put a counter next to it')
+                return
+            }
+            if (!("width" in event.items[0])) {
+                addLog('You have to select text element with username to put a counter next to it')
+                return
+            }
+            let currentUserText = (event.items[0] as Text)
+
+            if (currentUserText.content.indexOf('$') != -1 || currentUserText.content.indexOf('#') != -1) {
+                return
+            }
+
+            miro.board.createText({
+                content: `${counterValue})`,
+                x: currentUserText.x - currentUserText.width / 2 - (counterValue > 9 ? 15 : 5),
+                y: currentUserText.y,
+                width: 20,
+                style: {
+                    fontSize: 25,
+                }
+            }).then(() => increaseCounter())
+        }
+    }
 
     function resetCounter() {
         localStorage.setItem(KeyCounter, "1")
         setCounter(1)
     }
 
+    function setIsAuto(newV: boolean) {
+        _setIsAuto(newV)
+    }
+
     function switchAuto() {
-        setIsAuto((old) => {
+        _setIsAuto((old) => {
             let newV = !old
             localStorage.setItem(KeyAuto, newV ? "1" : "")
             return newV
