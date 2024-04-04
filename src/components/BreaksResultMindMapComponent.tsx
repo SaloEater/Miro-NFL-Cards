@@ -327,6 +327,11 @@ export default function BreaksResultMindMapComponent() {
                     return
                 }
                 let currentUserText = (event.items[0] as Text)
+
+                if (currentUserText.content.indexOf('$') || currentUserText.content.indexOf('>')) {
+                    return
+                }
+
                 miro.board.createText({
                     content: `${counter})`,
                     x: currentUserText.x - currentUserText.width / 2 - (counter > 9 ? 15 : 5),
