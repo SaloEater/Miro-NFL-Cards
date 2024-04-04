@@ -328,7 +328,7 @@ export default function BreaksResultMindMapComponent() {
                 }
                 let currentUserText = (event.items[0] as Text)
 
-                if (currentUserText.content.indexOf('$') || currentUserText.content.indexOf('>')) {
+                if (currentUserText.content.indexOf('$') != -1 || currentUserText.content.indexOf('>') != -1) {
                     return
                 }
 
